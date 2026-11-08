@@ -1,0 +1,245 @@
+{
+ "dataset": "eval/data/test.json (held out)",
+ "cases": 72,
+ "thresholds": {
+  "fan_in_min_payers": 5,
+  "shared_group_min": 2,
+  "cluster_min_accounts": 3,
+  "burst_min_captures": 4,
+  "burst_window_min": 60,
+  "uniform_min_captures": 4,
+  "uniform_max_spread": "0.10",
+  "outlier_min_captures": 6,
+  "outlier_mad_z": "5.0",
+  "failed_repeat_min": 3,
+  "failed_window_min": 1440,
+  "night_min_captures": 6,
+  "night_share": "0.70",
+  "concentration_share": "0.60",
+  "concentration_min_items": 3,
+  "payout_freq_min": 5,
+  "payout_freq_window_min": 1440,
+  "duplicate_window_min": 15,
+  "dispute_ratio": "0.15",
+  "dispute_ratio_min_captures": 4,
+  "dispute_repeat_reason_min": 2,
+  "hold_score": 70,
+  "review_score": 25
+ },
+ "systems": {
+  "naive_amount": {
+   "correct": 15,
+   "n": 72,
+   "accuracy": 0.208,
+   "problem_flagged": 0,
+   "problem_n": 48,
+   "clean_wrongly_flagged": 9,
+   "clean_n": 24,
+   "ring_holds_found": 0,
+   "ring_holds_n": 12,
+   "wrong_holds": 9,
+   "dangerous_releases": 12
+  },
+  "naive_fan_in": {
+   "correct": 24,
+   "n": 72,
+   "accuracy": 0.333,
+   "problem_flagged": 33,
+   "problem_n": 48,
+   "clean_wrongly_flagged": 12,
+   "clean_n": 24,
+   "ring_holds_found": 12,
+   "ring_holds_n": 12,
+   "wrong_holds": 33,
+   "dangerous_releases": 0
+  },
+  "riskmesh": {
+   "correct": 60,
+   "n": 72,
+   "accuracy": 0.833,
+   "problem_flagged": 42,
+   "problem_n": 48,
+   "clean_wrongly_flagged": 6,
+   "clean_n": 24,
+   "ring_holds_found": 12,
+   "ring_holds_n": 12,
+   "wrong_holds": 0,
+   "dangerous_releases": 0
+  }
+ },
+ "by_type": {
+  "clean_single": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "RELEASE"
+  },
+  "clean_repeat": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "RELEASE"
+  },
+  "popular_seller": {
+   "n": 6,
+   "riskmesh_correct": 0,
+   "truth": "RELEASE"
+  },
+  "ring_full": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "HOLD"
+  },
+  "ring_injected": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "HOLD"
+  },
+  "ring_small_shared_device": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "REVIEW"
+  },
+  "fan_in_distinct_infra": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "REVIEW"
+  },
+  "ring_no_session_data": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "REVIEW"
+  },
+  "batch_mismatch": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "REVIEW"
+  },
+  "dispute_heavy": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "REVIEW"
+  },
+  "velocity_burst_merchant": {
+   "n": 6,
+   "riskmesh_correct": 0,
+   "truth": "REVIEW"
+  },
+  "clean_merchant": {
+   "n": 6,
+   "riskmesh_correct": 6,
+   "truth": "RELEASE"
+  }
+ },
+ "confusion": {
+  "HOLD": {
+   "HOLD": 12,
+   "REVIEW": 0,
+   "RELEASE": 0
+  },
+  "REVIEW": {
+   "HOLD": 0,
+   "REVIEW": 30,
+   "RELEASE": 6
+  },
+  "RELEASE": {
+   "HOLD": 0,
+   "REVIEW": 6,
+   "RELEASE": 18
+  }
+ },
+ "injection": {
+  "cases": 6,
+  "decision_changed": 0,
+  "note": "No model is in the loop here, so this shows only that no code path reads free text; it does not test an LLM's resistance."
+ },
+ "integrity": {
+  "all_statements_traced": true,
+  "claims_rejected_by_reviewers": 27
+ },
+ "runtime_s": 0.7,
+ "errors": [
+  {
+   "id": "t003",
+   "type": "popular_seller",
+   "truth": "RELEASE",
+   "got": "REVIEW",
+   "score": 60
+  },
+  {
+   "id": "t011",
+   "type": "velocity_burst_merchant",
+   "truth": "REVIEW",
+   "got": "RELEASE",
+   "score": 20
+  },
+  {
+   "id": "t015",
+   "type": "popular_seller",
+   "truth": "RELEASE",
+   "got": "REVIEW",
+   "score": 60
+  },
+  {
+   "id": "t023",
+   "type": "velocity_burst_merchant",
+   "truth": "REVIEW",
+   "got": "RELEASE",
+   "score": 20
+  },
+  {
+   "id": "t027",
+   "type": "popular_seller",
+   "truth": "RELEASE",
+   "got": "REVIEW",
+   "score": 60
+  },
+  {
+   "id": "t035",
+   "type": "velocity_burst_merchant",
+   "truth": "REVIEW",
+   "got": "RELEASE",
+   "score": 20
+  },
+  {
+   "id": "t039",
+   "type": "popular_seller",
+   "truth": "RELEASE",
+   "got": "REVIEW",
+   "score": 60
+  },
+  {
+   "id": "t047",
+   "type": "velocity_burst_merchant",
+   "truth": "REVIEW",
+   "got": "RELEASE",
+   "score": 20
+  },
+  {
+   "id": "t051",
+   "type": "popular_seller",
+   "truth": "RELEASE",
+   "got": "REVIEW",
+   "score": 60
+  },
+  {
+   "id": "t059",
+   "type": "velocity_burst_merchant",
+   "truth": "REVIEW",
+   "got": "RELEASE",
+   "score": 20
+  },
+  {
+   "id": "t063",
+   "type": "popular_seller",
+   "truth": "RELEASE",
+   "got": "REVIEW",
+   "score": 60
+  },
+  {
+   "id": "t071",
+   "type": "velocity_burst_merchant",
+   "truth": "REVIEW",
+   "got": "RELEASE",
+   "score": 20
+  }
+ ]
+}

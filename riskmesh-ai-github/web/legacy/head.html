@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RiskMesh AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['"Plus Jakarta Sans"','Inter','system-ui','Segoe UI','sans-serif']}}}}</script>
+<style>
+body{font-family:'Plus Jakarta Sans',Inter,system-ui,sans-serif;background:#f6f9fc;color:#2A3547;-webkit-font-smoothing:antialiased}
+#splash{position:fixed;inset:0;z-index:100;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s,visibility .6s}
+#splash.out{opacity:0;visibility:hidden}
+#splash .mark{animation:pop .8s cubic-bezier(.2,.9,.3,1.2) both}#splash h1{animation:rise .8s .3s both}
+#splash .bar{width:160px;height:3px;background:#ECF2FF;border-radius:9px;overflow:hidden;margin-top:28px}#splash .bar i{display:block;height:100%;width:0;background:#5D87FF;animation:load 2s .2s forwards}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}@keyframes rise{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}@keyframes load{to{width:100%}}
+.fade{animation:rise .5s both}svg text{font-family:inherit}
+</style></head><body>
+<div id="splash"><svg class="mark" width="72" height="72" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="12" fill="#5D87FF"/><g stroke="#fff" stroke-width="2"><path d="M24 11 36 18v12L24 37 12 30V18z" opacity=".55"/><path d="M24 11v26M12 18l24 12M36 18 12 30" opacity=".35"/></g><g fill="#fff"><circle cx="24" cy="11" r="3"/><circle cx="36" cy="18" r="3"/><circle cx="36" cy="30" r="3"/><circle cx="24" cy="37" r="3"/><circle cx="12" cy="30" r="3"/><circle cx="12" cy="18" r="3"/></g></svg>
+<h1 class="mt-6 text-4xl font-extrabold tracking-tight text-[#2A3547]">RiskMesh <span class="text-[#5D87FF]">AI</span></h1><div class="bar"><i></i></div></div>
+<div id="app"></div><div id="chat" style="display:none"></div>

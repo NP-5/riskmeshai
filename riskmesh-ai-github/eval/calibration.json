@@ -1,0 +1,16 @@
+{
+ "thresholds": {
+  "fan_in_min_payers": 5,
+  "review_score": 25,
+  "hold_score": 70,
+  "shared_group_min": 2,
+  "payout_freq_min": 5
+ },
+ "calibration_set": {
+  "cases": 48,
+  "accuracy_at_defaults": 0.833,
+  "accuracy_calibrated": 0.833
+ },
+ "settings_tried": 600,
+ "note": "Chosen on eval/data/calibration.json only (synthetic). Not tuned on the held-out test set and not on real fraud data."
+}
