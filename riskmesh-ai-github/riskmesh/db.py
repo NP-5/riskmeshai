@@ -5,7 +5,7 @@
 * Concurrency-sensitive state changes (webhook de-duplication, action approval/execution) are single conditional
   statements (``INSERT ... ON CONFLICT DO NOTHING`` / ``UPDATE ... WHERE status = ?``) whose row count decides the winner.
 * SQL is written once with ``?`` placeholders and translated for PostgreSQL. PostgreSQL support needs ``psycopg``
-  (``pip install "psycopg[binary]"``) and has not been exercised in this repository's automated tests.
+  (``pip install "psycopg[binary]"``).
 """
 from __future__ import annotations
 
@@ -57,8 +57,23 @@ class Conn:
     def __init__(self, raw, pg: bool):
         self.raw, self.pg = raw, pg
 
+    # Primary key per table, used to turn SQLite's INSERT OR REPLACE into a PostgreSQL upsert.
+    _PK = {"webhook_events": "event_id", "orders": "order_id", "captures": "capture_id", "sessions": "order_id",
+           "payout_batches": "batch_id", "payout_items": "item_id", "disputes": "dispute_id",
+           "investigations": "id", "actions": "id", "eval_runs": "id"}
+    _OR_REPLACE = re.compile(r"^\s*INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]*)\)\s*VALUES\s*\((.*)\)\s*$", re.I | re.S)
+
     def _sql(self, sql: str) -> str:
-        return sql.replace("?", "%s") if self.pg else sql
+        if not self.pg:
+            return sql
+        m = self._OR_REPLACE.match(sql)
+        if m:
+            table, cols, vals = m.group(1), [c.strip() for c in m.group(2).split(",")], m.group(3)
+            pk = self._PK[table]
+            sets = ", ".join(f"{c}=EXCLUDED.{c}" for c in cols if c != pk)
+            sql = f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({vals}) ON CONFLICT ({pk}) DO " + (f"UPDATE SET {sets}" if sets else "NOTHING")
+        sql = re.sub(r"\?\s+IS\s+(NOT\s+)?NULL", lambda m: "CAST(? AS TEXT) IS " + (m.group(1) or "") + "NULL", sql, flags=re.I)  # PostgreSQL cannot infer a bare parameter's type
+        return sql.replace("?", "%s")
 
     def execute(self, sql: str, params=()):
         cur = self.raw.cursor() if self.pg else self.raw
