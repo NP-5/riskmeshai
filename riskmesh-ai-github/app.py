@@ -177,7 +177,8 @@ class App:
             o = self.client.create_order(str(b.get("amount", "25.00")), str(b.get("currency", "USD")), str(b.get("invoice_id", "")), str(b.get("custom_id", "")))
         except PayPalError as e:
             raise HTTPException_from(e)
-        return {"order_id": o["id"], "approve": next((l["href"] for l in o.get("links", []) if l["rel"] == "payer-action"), None)}
+        approve = next((l["href"] for l in o.get("links", []) if l.get("rel") in ("payer-action", "approve")), None)  # PayPal returns "approve" unless a payment_source is sent
+        return {"order_id": o["id"], "approve": approve or f"https://www.sandbox.paypal.com/checkoutnow?token={o['id']}"}  # sandbox-only endpoint, so this host is safe
 
     def sandbox_capture(self, r):
         """Capture an order the BUYER has approved, then turn PayPal's own response into evidence (no webhook needed).
