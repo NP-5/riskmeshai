@@ -1,36 +1,66 @@
-"""Build a static, read-only snapshot of real engine output and inline it into web/index.html (and index.html for a static Space).
+"""Seed data for local demos and tests. Everything inserted here has ``source = 'demo'`` and is synthetic."""
+from __future__ import annotations
 
-    python eval/generate_cases.py && python eval/calibrate.py && python eval/run_eval.py && python build_demo.py
+import os
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal as D
 
-The snapshot comes from the same code the API runs, over synthetic demo data. It contains no secrets and no real PayPal data.
-"""
-import json
-import re
-from pathlib import Path
+from .financial import hash_identifier, mask_identifier
 
-from riskmesh import demo_data
-from riskmesh.config import load_settings
-from riskmesh.db import Database
-from riskmesh.paypal import PayPalClient
-from riskmesh.service import Service
+BASE_T = datetime(2026, 11, 1, 10, 0, tzinfo=timezone.utc)
 
-ROOT = Path(__file__).resolve().parent
-s = load_settings({"RISKMESH_ENV": "development", "RISKMESH_DEMO_MODE": "1", "DATABASE_URL": "sqlite:///:memory:", "RISKMESH_PEPPER": "snapshot-pepper-not-secret"})
-db = Database(s.db_url)
-svc = Service(s, db, PayPalClient(s))
-ids = demo_data.seed(db, s.pepper)
-out = []
-for name in ("ring", "nosession", "clean"):
-    d = svc.investigate("beneficiary", ids[name], "snapshot", "admin", "static snapshot")
-    summary = {k: d[k] for k in ("id", "subject_type", "subject_id", "status", "created_by", "created_at", "risk_level", "risk_score", "recommendation", "summary", "ring")}
-    out.append({"id": d["id"], "summary": summary, "detail": d, "actions": []})
-all_actions = svc.list_actions()
-for o in out:
-    o["actions"] = [a for a in all_actions if a["investigation_id"] == o["id"]]
-ev = json.loads((ROOT / "eval" / "results.json").read_text()) if (ROOT / "eval" / "results.json").exists() else None
-blob = json.dumps({"investigations": out, "eval": ev}, separators=(",", ":")).replace("</", "<\\/")
-html = (ROOT / "web" / "index.html").read_text()
-html = re.sub(r"/\*DATA_START\*/.*?/\*DATA_END\*/", lambda m: "/*DATA_START*/" + blob + "/*DATA_END*/", html, flags=re.S)
-(ROOT / "web" / "index.html").write_text(html)
-(ROOT / "index.html").write_text(html)
-print("snapshot:", len(out), "investigations,", len(blob) // 1024, "KB")
+
+def iso(minutes: int) -> str:
+    return (BASE_T + timedelta(minutes=minutes)).isoformat().replace("+00:00", "Z")
+
+
+def insert(conn, table: str, rows: list) -> None:
+    for r in rows:
+        cols = list(r)
+        conn.execute(f"INSERT OR REPLACE INTO {table} ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})", [r[c] for c in cols])
+
+
+def build_scenario(name, recipient, payers, pepper="", amounts=None, devices=None, ips=None, minutes_apart=3, item_status="UNCLAIMED",
+                   with_sessions=True, header_delta="0.00", disputes=0, memo_note=None, start=0, merchant=None):
+    """Return table rows for one scenario: N payers -> one recipient, with verified capture->payout links."""
+    n = len(payers)
+    amounts = amounts or ["25.00"] * n
+    rows = {"orders": [], "captures": [], "sessions": [], "payout_batches": [], "payout_items": [], "disputes": []}
+    merchant = merchant or f"MERCH-{name}"
+    for i, p in enumerate(payers):
+        oid, cid, inv = f"ORD-{name}-{i + 1:02d}", f"CAP-{name}-{i + 1:02d}", f"INV-{name}-{i + 1:02d}"
+        t = iso(start + i * minutes_apart)
+        rows["orders"].append({"order_id": oid, "payer_id": p, "merchant_id": merchant, "amount": amounts[i], "currency": "USD", "status": "COMPLETED", "created_at": t, "source": "demo"})
+        rows["captures"].append({"capture_id": cid, "order_id": oid, "payer_id": p, "merchant_id": merchant, "amount": amounts[i], "currency": "USD", "status": "COMPLETED",
+                                 "created_at": t, "invoice_id": inv, "custom_id": "UNKNOWN", "source_event_id": None, "source": "demo"})
+        if with_sessions:
+            rows["sessions"].append({"order_id": oid, "device": (devices or [f"dev-{name}-{i}"] * n)[i] if devices else f"dev-{name}-{i}",
+                                     "ip": (ips[i] if ips else f"203.0.113.{10 + i}"), "source": "demo", "recorded_at": t})
+        rows["payout_items"].append({"item_id": f"ITEM-{name}-{i + 1:02d}", "batch_id": f"BATCH-{name}", "recipient_id": hash_identifier(recipient, pepper),
+                                     "recipient_display": mask_identifier(recipient), "amount": amounts[i], "currency": "USD", "status": item_status,
+                                     "sender_item_id": inv, "created_at": iso(start + n * minutes_apart + 5 + i), "source": "demo"})
+    total = sum((D(a) for a in amounts), D(0)) + D(header_delta)
+    rows["payout_batches"].append({"batch_id": f"BATCH-{name}", "status": "PROCESSING", "header_amount": f"{total:.2f}", "currency": "USD",
+                                   "created_at": iso(start + n * minutes_apart + 4), "sender_batch_id": f"SB-{name}", "source": "demo"})
+    for k in range(disputes):
+        rows["disputes"].append({"dispute_id": f"DSP-{name}-{k + 1:02d}", "capture_id": f"CAP-{name}-{k + 1:02d}", "reason": "UNAUTHORISED", "amount": amounts[k],
+                                 "currency": "USD", "status": "OPEN", "created_at": iso(start + n * minutes_apart + 30), "source": "demo"})
+    return rows
+
+
+def seed(db, pepper="") -> dict:
+    """Insert three demo subjects and return {name: recipient_id (hashed)}."""
+    # Optional: show your own address (masked in the UI, hashed in the DB) as the ring recipient. Set RISKMESH_DEMO_RECIPIENT on the server.
+    ring_recipient = (os.environ.get("RISKMESH_DEMO_RECIPIENT") or "").strip() or "ring-beneficiary@example.test"
+    ring = build_scenario("RING", ring_recipient, [f"PAYER-R{i}" for i in range(1, 8)], pepper,
+                          devices=["dev-A", "dev-A", "dev-A", "dev-B", "dev-B", "dev-C", "dev-D"],
+                          ips=["198.51.100.7", "198.51.100.7", "198.51.100.8", "198.51.100.9", "198.51.100.9", "198.51.100.10", "198.51.100.11"], disputes=2)
+    clean = build_scenario("CLEAN", "clean-seller@example.test", ["PAYER-C1", "PAYER-C2"], pepper, amounts=["120.00", "75.50"], minutes_apart=240, start=500)
+    nosess = build_scenario("NOSESS", "nosession@example.test", [f"PAYER-N{i}" for i in range(1, 7)], pepper, with_sessions=False, start=900)
+    ids = {}
+    with db.tx() as c:
+        for key, sc in (("ring", ring), ("clean", clean), ("nosession", nosess)):
+            for table in ("orders", "captures", "sessions", "payout_batches", "payout_items", "disputes"):
+                insert(c, table, sc[table])
+            ids[key] = sc["payout_items"][0]["recipient_id"]
+    return ids
