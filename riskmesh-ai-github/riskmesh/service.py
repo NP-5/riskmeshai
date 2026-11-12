@@ -278,9 +278,19 @@ class Service:
         if not self.s.demo_mode or self.s.production:
             raise ServiceError(403, "demo data can only be loaded when RISKMESH_DEMO_MODE=1 outside production")
         ids = demo_data.seed(self.db, self.s.pepper)
-        with self.db.tx() as c:
+        ids.update(demo_data.seed_showcase(self.db, self.s.pepper))
+        with self.db.tx() as c:                                   # demo only: start from a clean case list so repeated seeding never piles up duplicates
+            c.execute("DELETE FROM actions")
+            c.execute("DELETE FROM investigations")
             audit(c, actor, role, "demo.seed", "demo", "ok", {})
-        return {"seeded": True, "subjects": ids}
+        done = 0
+        for sid in ids.values():                                  # one investigation per synthetic recipient, so the dashboard is populated straight away
+            try:
+                self.investigate("beneficiary", sid, actor, role)
+                done += 1
+            except Exception:
+                pass
+        return {"seeded": True, "subjects": ids, "investigations": done}
 
     def audit_log(self, limit: int = 100) -> list:
         with self.db.tx() as c:
